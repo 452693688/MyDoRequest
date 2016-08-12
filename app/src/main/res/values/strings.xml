@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">MyDoRequest</string>
+    <string name="connecting">管接头</string>
+    <string name="disconnected">分离</string>
+    <string name="connected">连接</string>
+</resources>
