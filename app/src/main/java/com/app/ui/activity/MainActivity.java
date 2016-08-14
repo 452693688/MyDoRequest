@@ -4,10 +4,10 @@ import android.content.Intent;
 import android.net.VpnService;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.View;
 
-import com.app.ui.server.ToyVpnService;
+import com.app.ui.server.ToyVpnService2;
+import com.app.ui.utile.DLog;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
@@ -34,11 +34,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onActivityResult(int request, int result, Intent data) {
         //同意本app启动vpn服务
         if (result == RESULT_OK) {
-            Log.e("不能启动vpnServer", "=============");
+            DLog.e("启动vpnServer", "===============");
+            ToyVpnService2.startService(this);
             return;
         }
-        Log.e("启动vpnServer", "===============");
-        Intent intent = new Intent(this, ToyVpnService.class);
-        startService(intent);
+        DLog.e("不能启动vpnServer", "=============");
     }
 }

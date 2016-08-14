@@ -1,10 +1,15 @@
 package com.app.ui.server;
 
+import android.content.Context;
 import android.content.Intent;
 import android.net.VpnService;
 import android.os.ParcelFileDescriptor;
 
+import com.app.ui.utile.DLog;
+
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.DatagramChannel;
 
@@ -19,13 +24,25 @@ public class ToyVpnService2 extends VpnService {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        DLog.e(TAG, "启动服务");
+        run();
         return super.onStartCommand(intent, flags, startId);
     }
 
+    private void run() {
+        Thread mThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                initPort();
+            }
+        });
+    }
+
     private void initPort() {
+        DLog.e(TAG, "出始化端口");
         Builder builder = new Builder();
         //即表示虚拟网络端口的最大传输单元，如果发送的包长度超过这个数字，则会被分包；
-        builder.setMtu(100);
+        builder.setMtu(1500);
         //Address，即这个虚拟网络端口的IP地址；
         builder.addAddress("114.255.40.212", 24);
         //其实这里并不是用来修改Android设备上的路由表，
@@ -48,31 +65,54 @@ public class ToyVpnService2 extends VpnService {
         // 并且，同时还会通过iptables命令，修改NAT表，将所有数据转发到tun0接口上。
         ParcelFileDescriptor mInterface = builder.establish();
 
+        FileInputStream in = new FileInputStream(
+                mInterface.getFileDescriptor());
+        //b. Packets received need to be written to this output stream.
         FileOutputStream out = new FileOutputStream(
                 mInterface.getFileDescriptor());
-        // c. The UDP channel can be used to pass/get ip package
-        // to/from server
-        DatagramChannel tunnel;
+        try {
+            //c. The UDP channel can be used to pass/get ip package to/from server
+            DatagramChannel tunnel = DatagramChannel.open();
+            // Connect to the server, localhost is used for demonstration only.
+            tunnel.connect(new InetSocketAddress("127.0.0.1", 8087));
+            //d. Protect this socket, so package send by it will not be feedback to the vpn service.
+            protect(tunnel.socket());
+            //e. Use a loop to pass packets.
+            while (true) {
+                //get packet with in
+                //put packet to tunnel
+                //get packet form tunnel
+                //return packet with out
+                //sleep is a must
+                Thread.sleep(100);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            DLog.e(TAG, "关闭端口");
+            closeInterface(mInterface);
+        }
 
-        tunnel = DatagramChannel.open();
-        // Connect to the server, localhost is used for
-        // demonstration only.
-        InetSocketAddress server = new InetSocketAddress("114.255.40.212", 80);
-        tunnel.connect(server);
-        // d. Protect this socket, so package send by it will not be
-        // feedback to the vpn service.
-        protect(tunnel.socket());
-        // e. Use a loop to pass packets.
-        while (true) {
-            runserver(server);
-            // get packet with in
-            // put packet to tunnel
-            // get packet form tunnel
-            // return packet with out
-            // sleep is a must
-            Thread.sleep(100);
+    }
+
+    private void closeInterface(ParcelFileDescriptor mInterface) {
+        if (mInterface == null) {
+            return;
+        }
+        try {
+            mInterface.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            mInterface = null;
+            DLog.e(TAG, "关闭接口");
         }
     }
-    private void test() {
+
+    public static void startService(Context context) {
+        Intent intent = new Intent(context, ToyVpnService.class);
+        context.startService(intent);
     }
 }
